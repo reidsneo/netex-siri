@@ -1,0 +1,180 @@
+<html>
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+        <script type="text/javascript" charset="utf-8">
+            $(document).ready(function() {
+                // Connect to the Socket.IO server.
+                // The connection URL has the following format, relative to the current page:
+                //     http[s]://<domain>:<port>[/<namespace>]
+                var socket = io();
+    
+                // Event handler for new connections.
+                // The callback function is invoked when a connection with the
+                // server is established.
+                socket.on('connect', function() {
+                    socket.emit('my_event', {data: 'I\'m connected!'});
+                });
+    
+                // Event handler for server sent data.
+                // The callback function is invoked whenever the server emits data
+                // to the client. The data is then displayed in the "Received"
+                // section of the page.
+                socket.on('my_response', function(msg, cb) {
+                    $('#log').append('<br>' + $('<div/>').text('Received # : ' + msg.data).html());
+                    if (cb)
+                        cb();
+                });
+    
+                // Interval function that tests message latency by sending a "ping"
+                // message. The server then responds with a "pong" message and the
+                // round trip time is measured.
+                var ping_pong_times = [];
+                var start_time;
+                window.setInterval(function() {
+                    start_time = (new Date).getTime();
+                    $('#transport').text(socket.io.engine.transport.name);
+                    socket.emit('my_ping');
+                }, 1000);
+    
+                // Handler for the "pong" message. When the pong is received, the
+                // time from the ping is stored, and the average of the last 30
+                // samples is average and displayed.
+                socket.on('my_pong', function() {
+                    var latency = (new Date).getTime() - start_time;
+                    ping_pong_times.push(latency);
+                    ping_pong_times = ping_pong_times.slice(-30); // keep last 30 samples
+                    var sum = 0;
+                    for (var i = 0; i < ping_pong_times.length; i++)
+                        sum += ping_pong_times[i];
+                    $('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
+                });
+    
+                socket.on('kv6_status', function(msg) {
+                    $('#kv6_status').text(msg.data);
+                });
+
+                socket.on('jobs_status', function(msg) {
+                    $('#jobs_status').text(msg.data);
+                });
+    
+                // Handlers for the different forms in the page.
+                // These accept data from the user and send it to the server in a
+                // variety of ways
+                $('form#emit').submit(function(event) {
+                    socket.emit('my_event', {data: $('#emit_data').val()});
+                    return false;
+                });
+                $('form#broadcast').submit(function(event) {
+                    socket.emit('my_broadcast_event', {data: $('#broadcast_data').val()});
+                    return false;
+                });
+                $('form#join').submit(function(event) {
+                    socket.emit('join', {room: $('#join_room').val()});
+                    return false;
+                });
+                $('form#leave').submit(function(event) {
+                    socket.emit('leave', {room: $('#leave_room').val()});
+                    return false;
+                });
+                $('form#send_room').submit(function(event) {
+                    socket.emit('my_room_event', {room: $('#room_name').val(), data: $('#room_data').val()});
+                    return false;
+                });
+                $('form#close').submit(function(event) {
+                    socket.emit('close_room', {room: $('#close_room').val()});
+                    return false;
+                });
+                $('form#disconnect').submit(function(event) {
+                    socket.emit('disconnect_request');
+                    return false;
+                });
+
+                $(function() {
+                    $('#upload-file-btn').click(function() {
+                        var form_data = new FormData($('#upload-file')[0]);
+                        $.ajax({
+                            type: 'POST',
+                            url: '/upload',
+                            data: form_data,
+                            contentType: false,
+                            cache: false,
+                            processData: false,
+                            success: function(data) {
+                                console.log('Success!');
+                            },
+                        });
+                    });
+                });
+
+            });
+        </script>
+        <style type="text/css">
+            td
+            {
+                padding:0 25px;
+            }
+            </style>            
+    </head>
+    <body>
+        <table>
+            <tr>
+                <td><h1>Available sitemap</h1></td>
+            </tr>
+            <tr valign="top">
+            <td><h3>NeTeX - JSON (New)</h3>
+                <p><b>Resource Frame</b></p>
+                <p><a href='/resourceframe/datasources'>Datasources</a></p>
+                <p><a href='/resourceframe/responsibilitysets'>Responsibilitysets</a></p>
+                <p><a href='/resourceframe/typesofvalue'>TypesOfValue</a></p>
+                <p><a href='/resourceframe/operator'>Operator</a></p>
+                <p><a href='/resourceframe/authority'>Authority</a></p>
+                <br>
+                <p><b>Service Frame</b></p>
+                <p><a href='/serviceframe/routepoints'>RoutePoints</a></p>
+                <p><a href='/serviceframe/lines'>Lines</a></p>
+                <p><a href='/serviceframe/timinglinks'>TimingLinks</a></p>
+                <p><a href='/serviceframe/destinationdisplays'>DestinationDisplays</a></p>
+                <p><a href='/serviceframe/scheduledstoppoint'>Scheduled StopPoint</a></p>
+                <p><a href='/serviceframe/servicejourneypattern'>Journey Pattern</a></p>
+                <p><a href='/serviceframe/timedemandtype'>Time DemandType</a></p>
+                <p><a href='/serviceframe/notices'>Notices</a></p>
+                <p><a href='/serviceframe/noticeassignments'>Notice Assignments</a></p>
+                <p><a href='/serviceframe/timetables'>Timetable</a></p>
+            </td>
+            <td><h3>NeTeX - JSON (Baseline)</h3>
+                <p>Resource Frame</p>
+                <p><a href='/resourceframe/baseline/datasources'>Datasources</a></p>
+                <p><a href='/resourceframe/baseline/responsibilitysets'>Responsibilitysets</a></p>
+            </td>
+            <td><h3>SIRI - XML</h3>
+                <p>Resource Frame</p>
+                <p><a href='/transit/operators'>Operators</a></p>
+                <p><a href='/transit/line'>Lines</a></p>
+                <p><a href='/transit/VehicleMonitoring'>Realtime Vehicle Monitoring</a></p>
+            </td><td><h3>Server Status</h3>
+                <p>
+                    Async mode is: <b>{{ async_mode }}</b><br>
+                    Current transport is: <b><span id="transport"></span></b><br>
+                    Average ping/pong latency: <b><span id="ping-pong"></span>ms</b><br>
+                    KV6 Poller Status : <b><span id="kv6_status"></span></b><br>
+                    Jobs : <b><span id="jobs_status"></span></b>
+                </p>
+            </td>
+            <tr>
+                <td></td><td></td>
+                <td>
+                    <form id="upload-file" method="post" enctype="multipart/form-data">
+                        <fieldset>
+                            <input id="name" name="name" type="text">
+                            <input name="file" type="file">
+                        </fieldset>
+                        <fieldset>
+                            <button id="upload-file-btn" type="button">Upload</button>
+                        </fieldset>
+                    </form>
+                </td>
+            </tr>
+        </tr>
+    </body>
+</html>
